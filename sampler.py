@@ -1,9 +1,23 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Wed Nov  8 08:56:09 2023
+Sampling Methods and File Operations Script
 
-@author: Ozgur
+Author: Ozgur
+Date: November 8, 2023
+
+This script provides various sampling methods (random, stratified, systematic, and cluster) for Excel and CSV files.
+Additionally, it offers functions for creating empty Excel files and writing data into files.
+
+Usage:
+- Create empty Excel files with create_empty_excel_file(filename).
+- Print data into files in either XLSX or CSV format with print_into_file(data_array, file_type).
+- Check if a file is in the supported format (XLSX or CSV) using check_file_format(filename).
+- Create a test Excel file with random data using create_test_file(filename, num_columns, num_rows).
+- Perform random sampling from an Excel file using random_sampler(filename, sampling_set_size, sheet_name).
+- Perform stratified sampling from an Excel or CSV file using stratified_sampler(filename, groupby_column_num, sample_size).
+- Perform systematic sampling from an Excel file using systematic_sampler(sampling_set_size, filename, sheet_name).
+- Perform cluster sampling from an Excel file using cluster_sampler(sampling_set_size, sampling_group_column, filename, sheet_name).
 """
 
 import openpyxl
@@ -23,7 +37,9 @@ def create_empty_excel_file(filename):
     # Close the workbook
     workbook.close()
 
-def print_into_file(data_array, file_type):
+#TODO - results are problematic, gonna be fixed
+#have to check input parameters as they are 3, but should be 2, no need filename with extension
+def print_into_file(data_array, file_type, output_filename):
     if file_type not in ["xlsx", "csv"]:
         raise ValueError("Invalid file_type. Supported values are 'xlsx' or 'csv'.")
 
@@ -39,16 +55,17 @@ def print_into_file(data_array, file_type):
             for col_index, value in enumerate(row_data, start=1):
                 sheet.cell(row=row_index, column=col_index, value=value)
 
-        # Save the workbook as an Excel file named "results.xlsx"
-        workbook.save("results.xlsx")
+        # Save the workbook as an Excel file
+        workbook.save(output_filename)
 
     elif file_type == "csv":
-        # Create a CSV file named "results.csv" and print the data
-        with open("results.csv", "w", newline="") as csv_file:
+        # Create a CSV file and print the data
+        with open(output_filename, "w", newline="") as csv_file:
             csv_writer = csv.writer(csv_file)
             csv_writer.writerows(data_array)
 
 def check_file_format(filename):
+    
     if not os.path.exists(filename):
         raise FileNotFoundError(f"The file '{filename}' does not exist.")
 
@@ -59,7 +76,6 @@ def check_file_format(filename):
         # Unsupported file format
         print("Your data is not in a supported format. Please convert it to either XLSX or CSV.")
         exit(1)  # Terminate the program
-
 def create_test_file(filename, num_columns, num_rows):
     # Create a new Excel workbook
     workbook = openpyxl.Workbook()
@@ -180,8 +196,6 @@ def stratified_sampler(filename, groupby_column_num, sample_size=None):
     result_string = result.to_string(index=False)
     return result_string
 
-
-
 def systematic_sampler(sampling_set_size, filename, sheet_name=None):
     # Open the Excel file
     workbook = openpyxl.load_workbook(filename)
@@ -265,3 +279,4 @@ def cluster_sampler(sampling_set_size, sampling_group_column, filename, sheet_na
 create_empty_excel_file("sample.xlsx")
 create_test_file("sample.xlsx",3,250)
 print(stratified_sampler("sample.xlsx", 3, 25))
+print_into_file(stratified_sampler("sample.xlsx", 3, 25), "xlsx", "sonuc.xlsx")
