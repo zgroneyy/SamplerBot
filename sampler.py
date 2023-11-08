@@ -7,6 +7,7 @@ Created on Wed Nov  8 08:56:09 2023
 """
 
 import openpyxl
+import os
 import random
 import string
 import pandas as pd 
@@ -47,6 +48,18 @@ def print_into_file(data_array, file_type):
             csv_writer = csv.writer(csv_file)
             csv_writer.writerows(data_array)
 
+def check_file_format(filename):
+    if not os.path.exists(filename):
+        raise FileNotFoundError(f"The file '{filename}' does not exist.")
+
+    if filename.lower().endswith('.xlsx') or filename.lower().endswith('.csv'):
+        # The file is in a supported format (Excel or CSV)
+        return True
+    else:
+        # Unsupported file format
+        print("Your data is not in a supported format. Please convert it to either XLSX or CSV.")
+        exit(1)  # Terminate the program
+
 def create_test_file(filename, num_columns, num_rows):
     # Create a new Excel workbook
     workbook = openpyxl.Workbook()
@@ -85,7 +98,8 @@ def create_test_file(filename, num_columns, num_rows):
     # Close the workbook
     workbook.close()
 
-def random_sampler(sampling_set_size, filename, sheet_name=None):
+def random_sampler(filename, sampling_set_size, sheet_name=None):
+    
     # Open the Excel file
     workbook = openpyxl.load_workbook(filename)
     
@@ -118,30 +132,55 @@ def random_sampler(sampling_set_size, filename, sheet_name=None):
         rows_selected.append(row_index)
     return sampled_data
 
+def stratified_sampler(filename, groupby_column_num, sample_size=None):
+    # Check if the file exists
+    if not os.path.exists(filename):
+        raise FileNotFoundError(f"The file '{filename}' does not exist.")
 
-def stratified_sampler(filename, sheet_name, groupby_column_name, sample_size):
-    # Read the Excel file into a Pandas DataFrame
-    df = pd.read_excel(filename, sheet_name=sheet_name)
+    # Determine the file format (Excel or CSV)
+    if filename.lower().endswith('.xlsx'):
+        df = pd.read_excel(filename, header=None, skiprows=[0])
+    elif filename.lower().endswith('.csv'):
+        df = pd.read_csv(filename, header=None, skiprows=[0])
+    else:
+        raise ValueError("Unsupported file format. Please provide an Excel (.xlsx) or CSV (.csv) file.")
 
-    # Check if the groupby_column_name exists in the DataFrame
-    if groupby_column_name not in df.columns:
-        raise ValueError(f"'{groupby_column_name}' not found in the DataFrame.")
+    # Get the specified column name based on the column number
+    columns = df.columns
+    if groupby_column_num < 1 or groupby_column_num > len(columns):
+        raise ValueError("Invalid groupby_column_num. Column number is out of range.")
+    groupby_column = columns[groupby_column_num - 1]
+    
+    # Set a default sample size
+    if sample_size is None:
+        sample_size = len(df) / 10
 
     # Group the data by the specified column
-    grouped = df.groupby(groupby_column_name)
+    grouped = df.groupby(groupby_column)
 
-    # Sample data from each group
-    sampled_data = []
-    
-    for _, group_data in grouped:
-        group_sample_size = int((sample_size / len(df)) * len(group_data))
-        if group_sample_size > 0:
-            sampled_data.extend(group_data.sample(n=group_sample_size))
+    sampled_data = []  # Array to store the sampled data
+    percentages_per_group = []
+    for group, group_data in grouped:
+        group_size = len(group_data)
+        percentage = (group_size / len(df)) * 100
+        percentages_per_group.append(percentage)
+        elements_to_select = int((percentage * sample_size) / 100)
+        if elements_to_select > 0:
+            # If elements_to_select is greater than the population size, sample with replacement
+            if elements_to_select > group_size:
+                sampled_group = group_data.sample(n=elements_to_select, replace=True)
+            else:
+                sampled_group = group_data.sample(n=elements_to_select, replace=False)
+            sampled_data.append(sampled_group)
 
-    # Calculate the percentages of each group in the original data
-    percentages = (df[groupby_column_name].value_counts() / len(df) * 100).to_dict()
+    # Combine the sampled data from all groups
+    result = pd.concat(sampled_data).reset_index(drop=True)
 
-    return sampled_data, percentages
+    # Remove the indices from the printed result
+    result_string = result.to_string(index=False)
+    return result_string
+
+
 
 def systematic_sampler(sampling_set_size, filename, sheet_name=None):
     # Open the Excel file
@@ -220,8 +259,9 @@ def cluster_sampler(sampling_set_size, sampling_group_column, filename, sheet_na
 
     return sampled_data
 
-# Example usage: create an Excel file named "sample.xlsx" with 5 columns and 10 rows
+#For future try-outs, if file uploaded is not in required file format, just terminate the program
+# if not check_file_format("sample.xlsx"):  # Replace "sample.xlsx" with your filename
+#     exit()  # Terminate the program
 create_empty_excel_file("sample.xlsx")
-create_test_file("sample.xlsx",3,100)
-
-#stratified_sampler("sample.xlsx", sheet_name, groupby_column_name, sample_size)
+create_test_file("sample.xlsx",3,250)
+print(stratified_sampler("sample.xlsx", 3, 25))
