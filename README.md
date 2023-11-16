@@ -27,7 +27,7 @@ SamplerBot is a Python-based desktop application developed to facilitate data sa
 
 3. **Run the Application:**
    ```bash
-   python home_gui.py
+   python main.py
    ```
 
 4. **Explore and Sample:**
